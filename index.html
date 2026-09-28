@@ -11,6 +11,7 @@
   --ink-on-dark:#f1f0ec; --line:#dcdad3; --accent:#02367B; --accent-hover:#022a5f;
   --accent-on-dark:#5B9AE0; --good:#2e7d32; --bad:#c0392b; --warn:#cd7f32;
   --container:1320px; --gutter:clamp(16px,5vw,56px); --radius-pill:999px; --radius-card:20px;
+  --nav-h:74px; --tripbar-h:59px; /* measured live once the app is up — see syncHeaderHeights() */
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -73,13 +74,13 @@ nav.pill .nav-links a:hover,nav.pill .nav-links a.active{color:var(--accent);}
 .icon-btn.del:hover{border-color:var(--bad);color:var(--bad);}
 
 /* trip bar */
-.tripbar-shell{position:fixed;top:74px;left:0;right:0;z-index:900;padding:0 var(--gutter);pointer-events:none;}
+.tripbar-shell{position:fixed;top:var(--nav-h,74px);left:0;right:0;z-index:900;padding:0 var(--gutter);pointer-events:none;}
 .tripbar{pointer-events:auto;max-width:var(--container);margin:0 auto;background:var(--bg-pill);border:1px solid var(--line);border-radius:16px;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(0,0,0,.03);}
 .tripbar select{border:1px solid var(--line);border-radius:11px;padding:8px 12px;font-size:13.5px;background:#fff;max-width:220px;}
 .tripbar .spacer{flex:1;}
 
 /* page + heads */
-.page{padding-top:150px;}
+.page{padding-top:calc(var(--nav-h,74px) + var(--tripbar-h,59px) + 18px);}
 .view-head{margin-bottom:22px;}
 .view-head h1{font-size:clamp(24px,4vw,36px);font-weight:800;letter-spacing:-.01em;}
 .view-head p{color:var(--ink-soft);font-size:14px;margin-top:2px;}
@@ -185,7 +186,7 @@ tr.grp-row td span{font-weight:600;color:var(--ink-soft);margin-left:8px;font-si
 .notes-box{min-height:320px;line-height:1.6;}
 
 @media(max-width:980px){.kpis{grid-template-columns:1fr 1fr;}.grid3{grid-template-columns:1fr;}}
-@media(max-width:860px){nav.pill .nav-links{display:none;}.nav-shell{padding:12px var(--gutter) 0;}.tripbar-shell{top:64px;}.page{padding-top:132px;}}
+@media(max-width:860px){nav.pill .nav-links{display:none;}.nav-shell{padding:12px var(--gutter) 0;}}
 @media(max-width:720px){.grid2{grid-template-columns:1fr;}.form-grid{grid-template-columns:1fr;}.bar-row{grid-template-columns:96px 1fr 80px;}}
 @media(max-width:520px){.kpis{grid-template-columns:1fr 1fr;}}
 </style>
@@ -952,8 +953,7 @@ function applyEdit(e, rerenderCheck){
     const h = cur(); if(!h) return false;
     h[t.dataset.hk] = readVal(t); markChanged();
     if(rerenderCheck){
-      if(t.dataset.hk==='name') renderTripSel();
-      if(['status','homeCur','tripCur','start','end'].includes(t.dataset.hk)) render();
+      if(['name','status','homeCur','tripCur','start','end'].includes(t.dataset.hk)) render();
     }
     return true;
   }
@@ -1264,6 +1264,27 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && state
 
 /* warn on unload if unsynced */
 window.addEventListener('beforeunload', e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
+/* Keep the sticky nav + trip bar stacked correctly, and the page content
+   clear of both, no matter how tall they render (nav links wrapping to a
+   second row at in-between widths, a long holiday name wrapping the trip
+   bar, mobile vs desktop, font/zoom changes, ...). Fixed pixel offsets
+   broke whenever the real height didn't match the guess, so both are
+   measured live instead. */
+function syncHeaderHeights(){
+  const nav = $('navShell'), trip = $('tripbarShell');
+  const navH = (nav && !nav.classList.contains('hidden')) ? Math.ceil(nav.getBoundingClientRect().height) : 0;
+  const tripH = (trip && !trip.classList.contains('hidden')) ? Math.ceil(trip.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty('--nav-h', navH+'px');
+  document.documentElement.style.setProperty('--tripbar-h', tripH+'px');
+}
+if(window.ResizeObserver){
+  const headerObserver = new ResizeObserver(syncHeaderHeights);
+  headerObserver.observe($('navShell')); headerObserver.observe($('tripbarShell'));
+} else {
+  window.addEventListener('resize', syncHeaderHeights);
+}
+syncHeaderHeights();
 
 /* config sanity */
 if(!CONFIG.workerUrl || CONFIG.workerUrl.includes('PASTE')){
