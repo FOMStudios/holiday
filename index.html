@@ -952,6 +952,14 @@ function applyEdit(e, rerenderCheck){
   if(t.dataset.hk){
     const h = cur(); if(!h) return false;
     h[t.dataset.hk] = readVal(t); markChanged();
+    if(t.dataset.hk==='name'){
+      // Update the big page title and the trip-picker option live, on every
+      // keystroke, not just on blur — otherwise it looks like typing a new
+      // name does nothing until you click away.
+      if(state_tab==='overview') $('viewTitle').textContent = h.name || 'New holiday';
+      const opt = Array.from($('tripSel').options).find(o=>o.value===h.id);
+      if(opt) opt.textContent = h.name || 'Untitled';
+    }
     if(rerenderCheck){
       if(['name','status','homeCur','tripCur','start','end'].includes(t.dataset.hk)) render();
     }
